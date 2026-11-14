@@ -1,0 +1,52 @@
+{
+  "run_id": "E_sweep_sgd_lr0.3_s0",
+  "cell": "E",
+  "phase": "sweep",
+  "optimizer": "sgd",
+  "group": "reference",
+  "lr": 0.3,
+  "seed": 0,
+  "weight_decay": 0.0005,
+  "schedule": "cosine",
+  "dataset": "cifar10",
+  "model": "plaincnn",
+  "epochs": 50,
+  "batch_size": 128,
+  "amp": true,
+  "steps_per_epoch": 352,
+  "diverged": true,
+  "final": {
+    "train_loss": NaN,
+    "train_acc": 0.1009111111111111,
+    "val_loss": null,
+    "val_acc": null,
+    "test_loss": null,
+    "test_acc": null
+  },
+  "best_val": null,
+  "total_time_s": 4.063974805000726,
+  "step_time_ms": 11.544993181819956,
+  "peak_mem_mb": 348.51416015625,
+  "opt_state_mb": 2.1282119750976562,
+  "n_params": 557898,
+  "env": {
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "cuda": "12.8",
+    "cudnn": 91900,
+    "python": "3.13.15",
+    "os": "Linux-6.18.55+-x86_64-with-glibc2.39"
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "lr_end": 0.29970400926424073,
+      "train_loss": NaN,
+      "train_acc": 0.1009111111111111,
+      "diverged": true,
+      "train_time_s": 4.063837600000625,
+      "epoch_time_s": 4.063974805000726
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# Training (GPU): the published runs used torch 2.11.0 (+cu130 on Colab, +cu128 on Kaggle), torchvision 0.26.0
+torch
+torchvision
+# Analysis and plots (no GPU, no torch needed)
+matplotlib

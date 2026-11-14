@@ -1,0 +1,35 @@
+{
+  "best_lr": {
+    "adam": 0.0003,
+    "adamax": 0.001,
+    "nadam": 0.0003,
+    "amsgrad": 0.001,
+    "adamw": 0.001,
+    "radam": 0.001,
+    "adabelief": 0.003,
+    "adamp": 0.003,
+    "adan": 0.01,
+    "lion": 0.001,
+    "mars": 0.001,
+    "ademamix": 0.0003,
+    "cadamw": 0.01,
+    "sfadamw": 0.01,
+    "sgd": 0.1,
+    "spam": 0.0003,
+    "adams": 0.0001,
+    "vradam": 0.01
+  },
+  "lr_at_grid_edge": [],
+  "selected_at": "2026-10-22T13:33:26.520870",
+  "criterion": "val_acc ở epoch cuối, seed sweep",
+  "added": [
+    {
+      "opts": [
+        "spam",
+        "adams",
+        "vradam"
+      ],
+      "selected_at": "2026-10-29T05:14:45.366765"
+    }
+  ]
+}
