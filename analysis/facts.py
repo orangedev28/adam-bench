@@ -44,7 +44,7 @@ for (cell,o),rs in R.items():
     vals=[]
     for ep in (10,25,40):
         per=[st.mean(r['history'][ep-1]['lr_end']*math.sqrt(c)/r['history'][ep-1]['w_norms'][i] for r in rs) for i,c in enumerate(C)]
-        vals.append(max(per[1:])/min(per[1:]))
+        vals.append(max(per[1:])/min(per[1:]))   # 'imb' leaves out layer 1 (kept for reference); the paper's I, Eq. (4), is 'imb5'
     out['imb'][f'{cell}|{o}']=dict(e10=vals[0],e25=vals[1],e40=vals[2],mean=st.mean(vals),norm25=st.mean(st.mean(r['history'][24]['w_norms'][1:]) for r in rs),acc=st.mean(r['final']['test_acc'] for r in rs)*100,n=len(rs))
 json.dump(out,open('analysis/out/facts.json','w'),indent=1)
 for k,v in out['tests'].items(): print(k, {a:round(b,4) if isinstance(b,float) else b for a,b in v.items()})

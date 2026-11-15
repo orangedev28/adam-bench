@@ -1,4 +1,4 @@
-# Draws Fig. 1 of the paper (accuracy versus weight-decay coefficient). Run after p2_facts.py.
+# Draws Fig. 1 of the paper (accuracy versus weight-decay coefficient). Run after facts.py.
 import json, matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

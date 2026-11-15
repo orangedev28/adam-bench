@@ -17,7 +17,8 @@ for a,cell,t in zip(ax,'BE',['B: with BN','E: without BN']):
     for o,lab,col,ls in CFG:
         rs=R[(cell,o)]
         y=[st.mean(r['history'][24]['rel_upd'][l] for r in rs) for l in range(5)]
-        a.plot(range(1,6),y,ls,marker='o',ms=2.5,color=col,label=lab,lw=1.2)
+        mk={'adam':'o','adam-x0.01':'^','adamw':'s','sfadamw-l2':'D','sfadamw':'v'}[o]   # markers for black-and-white print
+        a.plot(range(1,6),y,ls,marker=mk,ms=3,color=col,label=lab,lw=1.2)
         print(cell,o,len(rs),' '.join(f'{v:.4f}' for v in y),'ratio %.1f'%(max(y)/min(y)))
     a.set_yscale('log'); a.set_title(t,fontsize=8); a.set_xlabel('convolution layer'); a.set_xticks(range(1,6))
 ax[0].set_ylabel(r'measured $\|\Delta W\|/\|W\|$')

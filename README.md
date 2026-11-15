@@ -1,6 +1,6 @@
 # adam-bench
 
-Code and training logs for a benchmark of 18 Adam-family optimizers on small convolutional networks, and for the follow-up study
+Code and training logs for a benchmark of 17 Adam-family optimizers and SGD with momentum on convolutional networks, and for the follow-up study
 
 > **Update Rule or Weight Decay? Disentangling the Gains of Adam Variants on Batch-Normalized Convolutional Networks**
 
@@ -68,6 +68,7 @@ python analysis/facts.py           # Table IV (sweep, selected LRs, imbalance I)
 python analysis/stats_blocked.py   # Tables II and III (ANOVA with seeds as blocks, cells B, C, D, E), per-seed contrasts, Holm, paired tests, TOST -> analysis/out/facts_stats.json
 python analysis/fig_wd.py          # Fig. 1 -> analysis/out/fig_wd.pdf
 python analysis/measured.py        # Table V (imbalance from the proxy and from measured updates) -> analysis/out/facts_measured.json
+python analysis/fig_norm.py analysis/out  # Fig. 2 (weight norms per epoch)
 python analysis/fig_rho.py analysis/out   # Fig. 3 (measured relative update per layer)
 python analysis/verify_rho.py      # summary of proxy vs measured updates over all runs that recorded them
 python analyze.py --out results/benchmark   # benchmark summaries (already included under results/benchmark)
