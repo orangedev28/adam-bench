@@ -150,6 +150,40 @@ def conv_weight_norms(model):
     return [p.detach().float().norm().item() for p in model.parameters() if p.ndim == 4]
 
 
+def _sample_steps(steps_per_epoch, n=10):
+    """Pick at most n step indices spread evenly over an epoch, at which the actual update is measured."""
+    n = min(n, steps_per_epoch)
+    if n <= 0:
+        return set()
+    stride = max(1, steps_per_epoch // n)
+    return {min(steps_per_epoch - 1, stride // 2 + i * stride) for i in range(n)}
+
+
+@torch.no_grad()
+def _measure_step_updates(conv_params, w_prev, eta_step, conv_c_sqrt):
+    """Return (rel_upd, ang_upd, rho_step) for every conv layer at a step that has just been applied:
+    the measured relative update ||w1 - w0|| / ||w0||, the angle between w0 and w1 (radians), and the
+    proxy eta * sqrt(C) / ||w0|| at the same step."""
+    rels, angs, rhos = [], [], []
+    for p0, p1, c_sqrt in zip(w_prev, conv_params, conv_c_sqrt):
+        a = p0.double()
+        d = p1.detach().double() - a
+        na = a.norm()
+        if na > 0:
+            dw = d.norm()
+            ahat = a / na
+            d_par = (d * ahat).sum()
+            d_perp = (d - d_par * ahat).norm()
+            rels.append((dw / na).item())
+            angs.append(torch.atan2(d_perp, na + d_par).item())
+            rhos.append(eta_step * c_sqrt / na.item())
+        else:
+            rels.append(0.0)
+            angs.append(0.0)
+            rhos.append(0.0)
+    return rels, angs, rhos
+
+
 def run_one(*, cell, phase, cell_cfg, opt_name, lr, seed, epochs, data,
             device, out_dir, env, interrupt_after=None, log=print):
     """Returns 'done' | 'skipped' | 'interrupted'.
@@ -202,6 +236,11 @@ def run_one(*, cell, phase, cell_cfg, opt_name, lr, seed, epochs, data,
         g = opt.param_groups[0]
         return g.get("scheduled_lr", g["lr"]) if sf else g["lr"]
 
+    # Measurement of the actual update (read-only; does not change training): ~10 steps per epoch.
+    conv_params = [p for p in model.parameters() if p.ndim == 4]
+    conv_c_sqrt = [math.sqrt(p.numel()) for p in conv_params]
+    sample_steps = _sample_steps(steps_per_epoch, n=10)
+
     diverged = any(h.get("diverged") for h in history)
     done_this_call = 0
     for epoch in range(start_epoch, epochs):
@@ -213,14 +252,39 @@ def run_one(*, cell, phase, cell_cfg, opt_name, lr, seed, epochs, data,
             opt.train()
         loss_sum = torch.zeros((), device=device)
         correct = torch.zeros((), device=device, dtype=torch.long)
-        for x, y in data.train_batches(bs, seed, epoch):
+        n_conv = len(conv_params)
+        sum_rel = [0.0] * n_conv
+        sum_ang = [0.0] * n_conv
+        sum_rho = [0.0] * n_conv
+        n_meas = 0
+        measure_next = False
+        for step_idx, (x, y) in enumerate(data.train_batches(bs, seed, epoch)):
             opt.zero_grad(set_to_none=True)
             with _autocast(use_amp):
                 out = model(x)
                 loss = cross_entropy(out, y)
             scaler.scale(loss).backward()
+            want_measure = n_conv > 0 and (measure_next or (step_idx in sample_steps))
+            if want_measure:
+                w_prev = [p.detach().clone() for p in conv_params]
+            old_scale = scaler.get_scale() if use_amp else None
             scaler.step(opt)
             scaler.update()
+            # With mixed precision the scaler skips a step when it finds inf/NaN gradients (and lowers
+            # the scale); such a step changes no weight, so the measurement moves to the next step.
+            step_ran = (not use_amp) or (scaler.get_scale() >= old_scale)
+            if want_measure:
+                if step_ran:
+                    measure_next = False
+                    rels, angs, rhos = _measure_step_updates(conv_params, w_prev, current_lr(), conv_c_sqrt)
+                    for li in range(n_conv):
+                        sum_rel[li] += rels[li]
+                        sum_ang[li] += angs[li]
+                        sum_rho[li] += rhos[li]
+                    n_meas += 1
+                else:
+                    measure_next = True
+                del w_prev
             if sched is not None:
                 sched.step()
             loss_sum += loss.detach() * len(y)
@@ -237,6 +301,10 @@ def run_one(*, cell, phase, cell_cfg, opt_name, lr, seed, epochs, data,
         rec["w_norms"] = norms
         rec["eta_eff_mean"] = (sum(current_lr() / n ** 2 for n in norms if n > 0) / len(norms)
                                if norms else None)
+        if n_meas > 0:
+            rec["rel_upd"] = [v / n_meas for v in sum_rel]
+            rec["ang_upd"] = [v / n_meas for v in sum_ang]
+            rec["rho_step"] = [v / n_meas for v in sum_rho]
         if not math.isfinite(train_loss):
             rec["diverged"] = True
             diverged = True

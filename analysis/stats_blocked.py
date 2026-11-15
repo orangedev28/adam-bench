@@ -2,10 +2,6 @@
 import sys, json, math, statistics as st
 sys.path.insert(0,'analysis'); sys.path.insert(0,'.')
 from load import *
-_x=finals('results/followup/E2b/*/runs/*/result.json'); _y=finals('results/followup/E4/*/runs/*/result.json')
-for _k in _x:
-    if _k in _y: _x[_k].update(_y[_k])
-NEWF.update(_x)
 from scipy_free import f_sf
 from bench.stats import betainc
 def t_p2(t,df): return betainc(df/2,0.5,df/(df+t*t))
@@ -19,7 +15,7 @@ def t_ppf(p,df):   # one-sided inverse by bisection
 X={'sfadamw':('sfadamw-l2','sfadamw'),'adabelief':('adabelief','adabelief-dw')}
 out={}; allp=[]
 for x,(xc,xd) in X.items():
-  for cell in 'BDE':
+  for cell in 'BCDE':
     c={('a','c'):get(cell,'adam'),('a','d'):get(cell,'adamw'),('x','c'):get(cell,xc),('x','d'):get(cell,xd)}
     seeds=sorted(set.intersection(*[set(v) for v in c.values()]))[:5]; n=len(seeds)
     Y={k:[v[s] for s in seeds] for k,v in c.items()}

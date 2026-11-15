@@ -1,10 +1,6 @@
 import sys,json,math,statistics as st,collections,glob
 sys.path.insert(0,'analysis'); sys.path.insert(0,'.')
 from load import *
-_x=finals('results/followup/E2b/*/runs/*/result.json'); _y=finals('results/followup/E4/*/runs/*/result.json')
-for _k in _x:
-    if _k in _y: _x[_k].update(_y[_k])   # E4: adds seeds 3, 4 for adam-x0.01
-NEWF.update(_x)
 from bench.stats import paired_t
 from anova import anova2
 out={'corners':{},'anova':{},'sweep':{},'tests':{},'imb':{}}
@@ -37,9 +33,13 @@ for cell,a,b in [('B','adam-x0.01','adamw'),('B','adam-x0.01','adam'),('B','sfad
     out['tests'][f'{cell}|{a}|{b}']=pt(cell,a,b)
 C=[1728,36864,73728,147456,294912]
 R=collections.defaultdict(list)
-for f in glob.glob('results/followup/E*/*/runs/*_final_*/result.json'):  # includes E4
+_seen=set()
+for f in sorted(glob.glob('results/followup/E*/*/runs/*_final_*/result.json')):  # one run per seed
     d=json.load(open(f))
-    if 'w_norms' in d['history'][0]: R[(d['cell'],d['optimizer'])].append(d)
+    if d['cell'] not in 'BE' or 'w_norms' not in d['history'][0]: continue
+    k=(d['cell'],d['optimizer'],d['seed'])
+    if k in _seen: continue
+    _seen.add(k); R[(d['cell'],d['optimizer'])].append(d)
 for (cell,o),rs in R.items():
     vals=[]
     for ep in (10,25,40):

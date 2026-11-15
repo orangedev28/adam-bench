@@ -12,12 +12,12 @@ Everything needed to check the numbers of the paper is here: the training code, 
 |---|---|
 | `bench/` | Library: configuration (`config.py`), data on GPU (`data.py`), models (`models.py`), optimizers (`optim.py`), one training run (`train.py`), statistics (`stats.py`), follow-up experiments (`experiments.py`) |
 | `run_cell.py` | Runner of the benchmark: LR sweep, LR selection, main runs, for one cell |
-| `run_exp.py` | Runner of the follow-up experiments (X1, E1, E2, E2b, E3, E4) |
+| `run_exp.py` | Runner of the follow-up experiments (X1, E1, E2, E2b, E3, E4, E1c, E5, E5b, E6, E6c) |
 | `analyze.py` | Summaries of the benchmark (tables, rankings, plots) |
 | `analysis/` | Analysis scripts of the paper (factorial tables, ANOVA, paired tests, figure) |
 | `results/benchmark/` | Benchmark results: 893 runs, cells A–E |
-| `results/followup/` | Follow-up results: 215 runs, experiments E1, E2, E2b, E3, E4 |
-| `colab.ipynb`, `colab_exp.ipynb`, `kaggle_exp.ipynb` | Launchers used on Google Colab and Kaggle |
+| `results/followup/` | Follow-up results: 291 runs, experiments E1, E2, E2b, E3, E4, E5, E5b, E1c, E6, E6c |
+| `colab.ipynb`, `colab_exp.ipynb`, `kaggle_exp.ipynb` | Launchers used on Google Colab and Kaggle (the two `*_exp` notebooks are the versions used for the last experiments, E1c–E6c; earlier versions are in the git history) |
 | `ref/` | Reference code used only by `--check-ref` |
 
 ## Benchmark
@@ -53,6 +53,9 @@ Optimizer variants are named `base-suffix`: `-l2` (coupled L2), `-dw` (decoupled
 | E2b | Sweep extension: Adam ×0.01, ×0.001; one more LR point for AdamW ×0.1 in B | B, E | 33 |
 | E3 | Re-runs of Adam, AdamW, AdaBelief, SF-AdamW with weight-norm recording (seeds 0–1) | B, E | 16 |
 | E4 | More seeds: Adam ×0.01 (seeds 3–4); Adam and AdamW with norm recording (seeds 2–4) | B, E | 16 |
+| E5, E5b | Seeds 3–4 for every remaining value of the weight-decay sweep, so that all values have 5 seeds | B, E | 28 |
+| E1c | Missing corners of the 2×2 design on ResNet-18: `adabelief-dw`, `sfadamw-l2` (LR search with 30-epoch runs + 5 seeds of 100 epochs) | C | 20 |
+| E6, E6c | Re-runs (seeds 0–1) with per-step recording of the measured update: Adam (×1, ×0.01), AdamW, SF-AdamW (L2 and decoupled) in B and E; Adam, AdamW, AdaBelief, SF-AdamW in C | B, C, E | 28 |
 
 `bench/experiments.py` also defines X1 (LR search with shortened cosine schedules); its results are not part of this release.
 
@@ -61,9 +64,12 @@ Optimizer variants are named `base-suffix`: `-l2` (coupled L2), `-dw` (decoupled
 Run from the repository root; only Python 3 and matplotlib are needed.
 
 ```bash
-python analysis/facts.py           # Table I (2x2 means), Table III (sweep, selected LRs, imbalance I) -> analysis/out/facts.json
-python analysis/stats_blocked.py   # Table II (ANOVA with seeds as blocks), per-seed contrasts, Holm, paired tests, TOST -> analysis/out/facts_stats.json
+python analysis/facts.py           # Table IV (sweep, selected LRs, imbalance I) -> analysis/out/facts.json
+python analysis/stats_blocked.py   # Tables II and III (ANOVA with seeds as blocks, cells B, C, D, E), per-seed contrasts, Holm, paired tests, TOST -> analysis/out/facts_stats.json
 python analysis/fig_wd.py          # Fig. 1 -> analysis/out/fig_wd.pdf
+python analysis/measured.py        # Table V (imbalance from the proxy and from measured updates) -> analysis/out/facts_measured.json
+python analysis/fig_rho.py analysis/out   # Fig. 3 (measured relative update per layer)
+python analysis/verify_rho.py      # summary of proxy vs measured updates over all runs that recorded them
 python analyze.py --out results/benchmark   # benchmark summaries (already included under results/benchmark)
 ```
 
@@ -72,7 +78,7 @@ python analyze.py --out results/benchmark   # benchmark summaries (already inclu
 Each run has a directory `results/.../<cell>/runs/<run id>/` with a `result.json`:
 
 - `optimizer`, `lr`, `weight_decay`, `seed`, `phase` (`sweep` or `final`), `diverged`;
-- `history`: per epoch `train_loss`, `train_acc`, `val_loss`, `val_acc`, `lr_end`, and in the follow-up runs `w_norms` (Frobenius norm of every conv weight);
+- `history`: per epoch `train_loss`, `train_acc`, `val_loss`, `val_acc`, `lr_end`, and in the follow-up runs `w_norms` (Frobenius norm of every conv weight); in the runs of E1c, E5, E5b, E6 and E6c also, per conv layer and averaged over 10 evenly spaced steps of the epoch, `rel_upd` (measured ‖W<sub>t+1</sub> − W<sub>t</sub>‖/‖W<sub>t</sub>‖), `ang_upd` (angle between W<sub>t</sub> and W<sub>t+1</sub>, radians) and `rho_step` (the proxy η<sub>t</sub>√C/‖W<sub>t</sub>‖), and `eta_eff_mean` (mean of η<sub>t</sub>/‖W‖² over the layers);
 - `final`: train/validation/test loss and accuracy at the last epoch;
 - `env`: GPU, torch, CUDA and cuDNN versions.
 

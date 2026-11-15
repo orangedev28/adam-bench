@@ -11,15 +11,23 @@ E2 - Weight-decay sweep: Adam (coupled L2) and AdamW (decoupled), 3 new coeffici
 E3 - Weight-norm recording: re-run Adam, AdamW, AdaBelief, SF-AdamW at the LR selected in the
           benchmark, cells B and E, 2 seeds. In the same environment the results must match the
           benchmark (reproducibility check), and ||w|| and lr/||w||^2 are logged per epoch.
+E1c - The two missing configurations of the 2x2 design on ResNet-18 (cell C): LR search (30 epochs)
+          + 5 seeds (100 epochs).
+E5, E5b - Seeds 3 and 4 for every value of the weight-decay sweep that had 3 seeds (cells B and E),
+          at the LR selected in E2/E2b, so that the whole sweep has 5 seeds.
+E6, E6c - Re-runs (seeds 0-1) that measure the actual update at ~10 steps per epoch (rel_upd, ang_upd,
+          rho_step), for the configurations of Section V-C in cells B and E (E6) and for the four
+          benchmark configurations of the 2x2 design on ResNet-18 (E6c).
 
 Each base cell must run in the environment of the benchmark (BASE_ENV): cell B on Colab
-(torch cu130), cells D and E on Kaggle (torch cu128).
+(torch cu130), cells C, D and E on Kaggle (torch cu128).
 """
 from . import config
 
 # Environment of the benchmark per cell (from env_lock.json of the 18-optimizer results).
 BASE_ENV = {
     "B": dict(gpu="Tesla T4", torch="2.11.0+cu130", cuda="13.0", cudnn=92700),
+    "C": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
     "D": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
     "E": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
 }
@@ -76,7 +84,59 @@ E4_SEEDS_X = (3, 4)
 E4_LR_X = {"B": 1e-2, "E": 1e-3}
 E4_SEEDS_DEF = (2, 3, 4)
 
-EXPERIMENTS = ("X1", "E1", "E2", "E3", "E2b", "E4")
+# E1c - the two missing configurations of the 2x2 design on ResNet-18 (cell C): LR search (30 epochs) + 5 seeds (100 epochs).
+E1C_OPTS = ("adabelief-dw", "sfadamw-l2")
+E1C_SEEDS = (0, 1, 2, 3, 4)
+
+# E5 - seeds 3, 4 for the weight-decay values NEXT TO the best one in B and E (at the LR selected in E2/E2b).
+E5_SEEDS = (3, 4)
+E5_CONFIGS = [
+    ("B", "adam-x0.001", 1e-2),    # 5e-7, next to the optimum 5e-6
+    ("B", "adam-x0.1",   3e-3),    # 5e-5, next to the optimum 5e-6
+    ("B", "adamw-x0.1",  3e-2),    # 5e-3, next to the optimum 5e-2
+    ("B", "adamw-x10",   1e-3),    # 5e-1, next to the optimum 5e-2
+    ("E", "adam-x0.1",   1e-3),    # 5e-5, next to the optimum 5e-4
+    ("E", "adam-x10",    1e-3),    # 5e-3, next to the optimum 5e-4
+    ("E", "adamw-x0.1",  1e-3),    # 5e-3, next to the optimum 5e-2
+    ("E", "adamw-x10",   1e-3),    # 5e-1, next to the optimum 5e-2
+]
+
+# E5b - seeds 3, 4 for the remaining values of the weight-decay sweep (the whole of Table IV / Fig. 1 at 5 seeds).
+E5B_SEEDS = (3, 4)
+E5B_CONFIGS = [
+    ("B", "adam-x10",    1e-3),    # 5e-3
+    ("B", "adam-x100",   3e-4),    # 5e-2
+    ("B", "adamw-x0.01", 1e-2),    # 5e-4
+    ("E", "adam-x0.001", 1e-3),    # 5e-7
+    ("E", "adam-x100",   3e-4),    # 5e-2
+    ("E", "adamw-x0.01", 1e-3),    # 5e-4
+]
+
+# E6 - check of rho against the actual update (rel_upd, ang_upd, rho_step) for the 5 configurations of Section V-C in B and E.
+E6_SEEDS = (0, 1)
+E6_CONFIGS = [
+    ("B", "adam",       1e-3),
+    ("B", "adam-x0.01", 1e-2),
+    ("B", "adamw",      1e-2),
+    ("B", "sfadamw-l2", 1e-2),
+    ("B", "sfadamw",    3e-2),
+    ("E", "adam",       1e-3),
+    ("E", "adam-x0.01", 1e-3),
+    ("E", "adamw",      1e-3),
+    ("E", "sfadamw-l2", 1e-2),
+    ("E", "sfadamw",    1e-2),
+]
+
+# E6c - weight norms and actual updates for the 4 benchmark configurations of the 2x2 design on ResNet-18 (cell C).
+E6C_SEEDS = (0, 1)
+E6C_CONFIGS = [
+    ("C", "adam",      3e-4),
+    ("C", "adamw",     1e-3),
+    ("C", "sfadamw",   1e-2),
+    ("C", "adabelief", 3e-3),
+]
+
+EXPERIMENTS = ("X1", "E1", "E2", "E3", "E2b", "E4", "E1c", "E5", "E5b", "E6", "E6c")
 
 
 def cell_cfg(cell):
@@ -118,6 +178,20 @@ def units(exp):
     elif exp == "E3":
         out = [("fixed", c, "final", o, E3_LR[c][o], s)
                for c in E3_CELLS for s in E3_SEEDS for o in E3_OPTS]
+    elif exp == "E1c":
+        out = [("tune", "C", o, E1C_SEEDS) for o in E1C_OPTS]
+    elif exp == "E5":
+        out = [("fixed", c, "final", o, lr, s)
+               for c, o, lr in E5_CONFIGS for s in E5_SEEDS]
+    elif exp == "E5b":
+        out = [("fixed", c, "final", o, lr, s)
+               for c, o, lr in E5B_CONFIGS for s in E5B_SEEDS]
+    elif exp == "E6":
+        out = [("fixed", c, "final", o, lr, s)
+               for c, o, lr in E6_CONFIGS for s in E6_SEEDS]
+    elif exp == "E6c":
+        out = [("fixed", c, "final", o, lr, s)
+               for c, o, lr in E6C_CONFIGS for s in E6C_SEEDS]
     else:
         raise ValueError(f"unknown experiment: {exp}")
     for u in out:

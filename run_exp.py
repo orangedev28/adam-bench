@@ -39,7 +39,7 @@ for _s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-SEC_PER_EPOCH = 6.5  # T4, cells B/D/E (measured in the benchmark); for estimates only
+SEC_PER_EPOCH = {"B": 6.1, "C": 21.5, "D": 6.5, "E": 4.9}  # T4 (measured in the benchmark); for estimates only
 
 
 # ------------------------------------------------------------- work assignment
@@ -241,6 +241,8 @@ def unit_runs(exp_dir, u):
 def cmd_status(args):
     for exp in (args.exp or X.EXPERIMENTS):
         us = select_units(exp, args.cells)
+        if not us:
+            continue
         ed = Path(args.out) / exp
         d = t = 0
         by_cell = {}
@@ -255,12 +257,14 @@ def cmd_status(args):
 
 def cmd_plan(args):
     tot = 0.0
-    for exp in X.EXPERIMENTS:
+    for exp in (args.exp or X.EXPERIMENTS):
         us = select_units(exp, args.cells)
+        if args.exp is not None and not us:
+            continue
         h = {}
         for u in us:
             b = X.base_cell(u[1])
-            h[b] = h.get(b, 0) + X.unit_cost(u) * SEC_PER_EPOCH / 3600
+            h[b] = h.get(b, 0) + X.unit_cost(u) * SEC_PER_EPOCH.get(b, 6.5) / 3600
         tot += sum(h.values())
         print(f"{exp}: {len(us)} units, ~{sum(h.values()):.1f} GPU hours  ("
               + ", ".join(f"cell {b}: {v:.1f} h" for b, v in sorted(h.items())) + ")")
@@ -350,12 +354,28 @@ def cmd_selftest(args, log):
             st = run_one(out_dir=root / "resumed", interrupt_after=1, **kw)
             run_one(out_dir=root / "resumed", **kw)
             h2 = read_json(root / "resumed" / "runs" / rid / "result.json")["history"]
-            norms_ok = all(len(e.get("w_norms", [])) > 0 and e.get("eta_eff_mean") is not None for e in h)  # the LR at the end of the cosine schedule is 0, so > 0 is not checked
-            same = st == "interrupted" and _same(h, h2)
+            # every epoch must carry the norms and the update measurements (the LR at the end of the
+            # cosine schedule is 0, so eta_eff_mean > 0 is not checked)
+            norms_ok = all(
+                len(e.get("w_norms", [])) > 0
+                and e.get("eta_eff_mean") is not None
+                and len(e.get("rel_upd", [])) == len(e["w_norms"])
+                and len(e.get("ang_upd", [])) == len(e["w_norms"])
+                and len(e.get("rho_step", [])) == len(e["w_norms"])
+                and all(math.isfinite(x) and x > 0 for k in ("rel_upd", "ang_upd", "rho_step") for x in e[k])
+                for e in h
+            )
+            upd_same = all(
+                e1.get(k) == e2.get(k)
+                for e1, e2 in zip(h, h2)
+                for k in ("w_norms", "rel_upd", "ang_upd", "rho_step")
+            )
+            same = st == "interrupted" and _same(h, h2) and upd_same
             ok = learned and norms_ok and same and r["wd_form"] == config.OPT_SPECS[o]["wd"]
             log(f"   [{'ok ' if ok else 'ERR'}] {ds}/{model}/{o} lr={lr:g}: loss {h[0]['train_loss']:.3f}->"
                 f"{h[-1]['train_loss']:.3f}, {len(h[-1]['w_norms'])} conv layers, "
                 f"||w|| {h[0]['w_norms'][0]:.2f}->{h[-1]['w_norms'][0]:.2f}, "
+                f"rel/rho {h[0]['rel_upd'][0]/h[0]['rho_step'][0]:.2f}, "
                 f"resume {'same' if same else 'DIFFERENT'}")
             if not ok:
                 fails.append(f"{ds}/{model}/{o}: learned={learned} norms={norms_ok} resume={same}")
@@ -377,7 +397,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exp", nargs="+", choices=X.EXPERIMENTS,
                     help="one or more experiments, run in order (e.g. --exp E1 E3 E2 X1)")
-    ap.add_argument("--cells", nargs="+", choices=["B", "D", "E"], help="run only these base cells")
+    ap.add_argument("--cells", nargs="+", choices=["B", "C", "D", "E"], help="run only these base cells")
     ap.add_argument("--out", default="results_exp")
     ap.add_argument("--data", default="data")
     ap.add_argument("--worker", type=int)
