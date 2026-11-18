@@ -91,6 +91,15 @@ CELLS = {
     # Ablation: same architecture as cell B but WITHOUT BatchNorm.
     "E": dict(dataset="cifar10",  model="plaincnn", epochs=50,  sweep_epochs=50,
               batch_size=128, amp=True, require_gpu="T4"),
+    # --- cells added for the follow-up study (not part of the 18-optimizer benchmark) ---
+    # F: ResNet-18 WITHOUT BatchNorm (ablation of cell C). H: the same with a zero-initialized
+    # residual scale (fallback, only used if F cannot be trained). G: ResNet-18 on CIFAR-100.
+    "F": dict(dataset="cifar10",  model="resnet18nb",  epochs=100, sweep_epochs=30,
+              batch_size=128, amp=True, require_gpu="T4"),
+    "G": dict(dataset="cifar100", model="resnet18",    epochs=100, sweep_epochs=30,
+              batch_size=128, amp=True, require_gpu="T4"),
+    "H": dict(dataset="cifar10",  model="resnet18nbz", epochs=100, sweep_epochs=30,
+              batch_size=128, amp=True, require_gpu="T4"),
 }
 # With/without-BN comparison pair (used in analyze.py).
 BN_ABLATION = ("B", "E")

@@ -1,0 +1,19 @@
+\begin{table}[!t]
+\caption{Dependence of the interaction on BN, Eq.~(\ref{eq:bndiff}): mean interaction contrast with BN and without BN, their difference $\Delta_{\mathrm{BN}}$ with the half-width of its 95\% Welch confidence interval, and the Holm-adjusted $p$-value (4 tests).}
+\label{tab:dbn}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+ & & \multicolumn{2}{c}{$\bar c_{\mathrm{int}}$} & & \\
+\cmidrule(lr){3-4}
+Network (cells) & X & with BN & without BN & $\Delta_{\mathrm{BN}}$ & $p$ \\
+\midrule
+Five-layer (B/E) & SF-AdamW & $-0.35$ & $+0.57$ & $-0.92\pm1.02$ & 0.21 \\
+Five-layer (B/E) & AdaBelief & $-1.41$ & $-0.86$ & $-0.55\pm0.79$ & 0.27 \\
+ResNet-18 (C/F) & SF-AdamW & $+1.16$ & $-1.15$ & $+2.31\pm0.41$ & $<$0.001 \\
+ResNet-18 (C/F) & AdaBelief & $-0.14$ & $-0.16$ & $+0.02\pm0.24$ & 0.85 \\
+\bottomrule
+\end{tabular}
+\end{table}

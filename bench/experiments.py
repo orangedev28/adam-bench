@@ -18,9 +18,17 @@ E5, E5b - Seeds 3 and 4 for every value of the weight-decay sweep that had 3 see
 E6, E6c - Re-runs (seeds 0-1) that measure the actual update at ~10 steps per epoch (rel_upd, ang_upd,
           rho_step), for the configurations of Section V-C in cells B and E (E6) and for the four
           benchmark configurations of the 2x2 design on ResNet-18 (E6c).
+E7p - Pilot for cell F (ResNet-18 without BN): Adam at three LRs, 30 epochs, in F and in H (the
+          variant with a zero-initialized residual scale), to see whether the plain network trains.
+E7 - 2x2 designs on ResNet-18 without BN (cell F, CIFAR-10): the six configurations (Adam, AdamW,
+          SF-AdamW with L2 and decoupled decay, AdaBelief with L2 and decoupled decay), LR search with
+          30-epoch runs + 5 seeds of 100 epochs. E7h is the same on cell H (run only if F fails).
+E8 - Joint LR x decay grid for Adam and AdamW (cells B and E): the missing points of a 6 x 6 grid
+          (LR 1e-4..3e-2; default coefficient x 0.001..100), one seed, validation accuracy.
+E9 - 2x2 designs on ResNet-18 with BN on CIFAR-100 (cell G): six configurations, LR search + 5 seeds.
 
-Each base cell must run in the environment of the benchmark (BASE_ENV): cell B on Colab
-(torch cu130), cells C, D and E on Kaggle (torch cu128).
+Each base cell must run in the environment of the benchmark (BASE_ENV): cells B and G on Colab
+(torch cu130), cells C, D, E, F and H on Kaggle (torch cu128).
 """
 from . import config
 
@@ -30,7 +38,11 @@ BASE_ENV = {
     "C": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
     "D": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
     "E": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
+    "F": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
+    "H": dict(gpu="Tesla T4", torch="2.11.0+cu128", cuda="12.8", cudnn=91900),
+    "G": dict(gpu="Tesla T4", torch="2.11.0+cu130", cuda="13.0", cudnn=92700),
 }
+COLAB_CELLS = ("B", "G")
 
 # ---------------------------------------------------------------- X1
 X1_OPTS = ("adam", "adamw", "adabelief", "lion", "sfadamw", "cadamw")
@@ -136,7 +148,37 @@ E6C_CONFIGS = [
     ("C", "adabelief", 3e-3),
 ]
 
-EXPERIMENTS = ("X1", "E1", "E2", "E3", "E2b", "E4", "E1c", "E5", "E5b", "E6", "E6c")
+# E7p / E7 / E7h / E9 - the six configurations of the two 2x2 designs.
+SIX_OPTS = ("adam", "adamw", "sfadamw-l2", "sfadamw", "adabelief", "adabelief-dw")
+E7_SEEDS = (0, 1, 2, 3, 4)
+E7P_LRS = (1e-4, 3e-4, 1e-3)
+
+# E8 - joint LR x decay grid (one seed). Points already run in the benchmark, E2 and E2b are not repeated.
+E8_LRS = (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2)
+E8_MULTS = (0.001, 0.01, 0.1, 1, 10, 100)          # x default coefficient of the form
+E8_DONE = {   # LRs already searched for (cell, optimizer, multiplier)
+    ("B", "adam", 0.001): (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2),
+    ("B", "adam", 0.01):  (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2),
+    ("B", "adam", 0.1):   (1e-4, 3e-4, 1e-3, 3e-3, 1e-2),
+    ("B", "adam", 1):     (1e-4, 3e-4, 1e-3, 3e-3),
+    ("B", "adam", 10):    (1e-4, 3e-4, 1e-3, 3e-3),
+    ("B", "adam", 100):   (1e-4, 3e-4, 1e-3, 3e-3),
+    ("B", "adamw", 0.01): (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2),
+    ("B", "adamw", 0.1):  (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2),
+    ("B", "adamw", 1):    (1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2),
+    ("B", "adamw", 10):   (1e-4, 3e-4, 1e-3, 3e-3),
+}
+for _o, _ms in (("adam", E8_MULTS), ("adamw", (0.01, 0.1, 1, 10))):
+    for _m in _ms:
+        E8_DONE[("E", _o, _m)] = (1e-4, 3e-4, 1e-3, 3e-3)
+
+
+def e8_name(o, m):
+    return o if m == 1 else f"{o}-x{m:g}"
+
+
+EXPERIMENTS = ("X1", "E1", "E2", "E3", "E2b", "E4", "E1c", "E5", "E5b", "E6", "E6c",
+               "E7p", "E7", "E7h", "E8", "E9")
 
 
 def cell_cfg(cell):
@@ -192,6 +234,18 @@ def units(exp):
     elif exp == "E6c":
         out = [("fixed", c, "final", o, lr, s)
                for c, o, lr in E6C_CONFIGS for s in E6C_SEEDS]
+    elif exp == "E7p":
+        out = [("fixed", c, "sweep", "adam", lr, config.SWEEP_SEED) for c in ("F", "H") for lr in E7P_LRS]
+    elif exp == "E7":
+        out = [("tune", "F", o, E7_SEEDS) for o in SIX_OPTS]
+    elif exp == "E7h":
+        out = [("tune", "H", o, E7_SEEDS) for o in SIX_OPTS]
+    elif exp == "E9":
+        out = [("tune", "G", o, E7_SEEDS) for o in SIX_OPTS]
+    elif exp == "E8":
+        out = [("fixed", c, "sweep", e8_name(o, m), lr, config.SWEEP_SEED)
+               for c in ("B", "E") for o in ("adam", "adamw") for m in E8_MULTS
+               for lr in E8_LRS if lr not in E8_DONE.get((c, o, m), ())]
     else:
         raise ValueError(f"unknown experiment: {exp}")
     for u in out:

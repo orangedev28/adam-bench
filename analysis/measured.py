@@ -1,4 +1,4 @@
-"""Measured relative update size (E6, E6c) vs the proxy rho = eta*sqrt(C)/||W||.
+"""Measured relative update size (E6, E6c; E1c for C sfadamw-l2) vs the proxy rho = eta*sqrt(C)/||W||.
 rel_upd = mean over the steps of an epoch of ||W_{t+1}-W_t||/||W_t|| (measured)
 ang_upd = mean angle between W_t and W_{t+1} (measured, radians)
 rho_step = mean over the steps of eta_t*sqrt(C)/||W_t|| (proxy, per step)"""
@@ -6,6 +6,10 @@ import json,glob,math,statistics as st,collections
 R=collections.defaultdict(list)
 for f in sorted(glob.glob('results/followup/E6*/*/runs/*/result.json')):
     d=json.load(open(f)); R[(d['cell'],d['optimizer'])].append(d)
+# C, SF-AdamW with L2: no E6c rerun; its five final runs of E1c already recorded the updates (Table 6, note a)
+for f in sorted(glob.glob('results/followup/E1c/C/runs/*/result.json')):
+    d=json.load(open(f))
+    if d['phase']=='final' and d['optimizer']=='sfadamw-l2' and 'rel_upd' in d['history'][0]: R[(d['cell'],d['optimizer'])].append(d)
 C5=[1728,36864,73728,147456,294912]
 def resnet_C():
     C=[3*64*9]; cin=64

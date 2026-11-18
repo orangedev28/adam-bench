@@ -1,0 +1,24 @@
+{
+  "ext": [],
+  "best_lr": 0.001,
+  "rows": [
+    [
+      0.0003,
+      0.8734
+    ],
+    [
+      0.001,
+      0.8922
+    ],
+    [
+      0.003,
+      0.8772
+    ],
+    [
+      0.01,
+      -1.0
+    ]
+  ],
+  "at_edge": false,
+  "criterion": "final-epoch val_acc, sweep seed"
+}

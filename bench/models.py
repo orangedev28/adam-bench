@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -98,6 +99,57 @@ class ResNet18(nn.Module):
         return self.fc(out)
 
 
+class BasicBlockNoBN(nn.Module):
+    """BasicBlock without BatchNorm: the convolutions carry biases instead (as PlainCNN does for BNCNN).
+    zero_res=True multiplies the residual branch by a learnable scalar initialized at 0 (SkipInit), a
+    fallback for the case in which the plain network cannot be trained."""
+    expansion = 1
+
+    def __init__(self, cin, cout, stride=1, zero_res=False):
+        super().__init__()
+        self.conv1 = nn.Conv2d(cin, cout, 3, stride, 1, bias=True)
+        self.conv2 = nn.Conv2d(cout, cout, 3, 1, 1, bias=True)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or cin != cout:
+            self.shortcut = nn.Sequential(nn.Conv2d(cin, cout, 1, stride, bias=True))
+        self.alpha = nn.Parameter(torch.zeros(1)) if zero_res else None
+
+    def forward(self, x):
+        out = self.conv2(F.relu(self.conv1(x)))
+        if self.alpha is not None:
+            out = self.alpha * out
+        return F.relu(out + self.shortcut(x))
+
+
+class ResNet18NoBN(nn.Module):
+    """ResNet-18 for 32x32 images with every BatchNorm layer removed (same layout and default
+    initialization as ResNet18; 20 convolution layers, now with biases)."""
+
+    def __init__(self, in_ch=3, num_classes=10, zero_res=False):
+        super().__init__()
+        self.cin = 64
+        self.zero_res = zero_res
+        self.conv1 = nn.Conv2d(in_ch, 64, 3, 1, 1, bias=True)
+        self.layer1 = self._make(64, 2, 1)
+        self.layer2 = self._make(128, 2, 2)
+        self.layer3 = self._make(256, 2, 2)
+        self.layer4 = self._make(512, 2, 2)
+        self.fc = nn.Linear(512, num_classes)
+
+    def _make(self, cout, n, stride):
+        layers = []
+        for s in [stride] + [1] * (n - 1):
+            layers.append(BasicBlockNoBN(self.cin, cout, s, self.zero_res))
+            self.cin = cout
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        out = F.relu(self.conv1(x))
+        out = self.layer4(self.layer3(self.layer2(self.layer1(out))))
+        out = out.mean((2, 3))
+        return self.fc(out)
+
+
 def build_model(name, in_ch, num_classes=10):
     if name == "bncnn":
         return BNCNN(in_ch, num_classes)
@@ -105,4 +157,8 @@ def build_model(name, in_ch, num_classes=10):
         return ResNet18(in_ch, num_classes)
     if name == "plaincnn":
         return PlainCNN(in_ch, num_classes)
+    if name == "resnet18nb":
+        return ResNet18NoBN(in_ch, num_classes)
+    if name == "resnet18nbz":
+        return ResNet18NoBN(in_ch, num_classes, zero_res=True)
     raise ValueError(f"unsupported model: {name}")

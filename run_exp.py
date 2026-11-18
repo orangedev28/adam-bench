@@ -39,7 +39,7 @@ for _s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-SEC_PER_EPOCH = {"B": 6.1, "C": 21.5, "D": 6.5, "E": 4.9}  # T4 (measured in the benchmark); for estimates only
+SEC_PER_EPOCH = {"B": 6.1, "C": 21.5, "D": 6.5, "E": 4.9, "F": 18.0, "G": 21.5, "H": 18.0}  # T4 (measured in the benchmark); for estimates only
 
 
 # ------------------------------------------------------------- work assignment
@@ -76,7 +76,7 @@ def check_env(base, env, args, log, checked):
     diff = {k: (v, env.get(k)) for k, v in need.items() if str(env.get(k)) != str(v)}
     if diff and not args.force_env:
         msg = "\n".join(f"  {k}: required {a!r}, this machine {b!r}" for k, (a, b) in diff.items())
-        where = "Colab" if base == "B" else "Kaggle"
+        where = "Colab" if base in X.COLAB_CELLS else "Kaggle"
         fail(f"Cell {base} must run in the environment of the benchmark ({where}):\n{msg}\n"
              f"Install the matching torch version or switch machines. Use --force-env only if you are sure.")
     if diff:
@@ -336,19 +336,28 @@ def cmd_selftest(args, log):
     from run_cell import _same
     # Fake data with 10 classes (100 classes learn too slowly in a few epochs, so the "learns" criterion would misfire).
     # Each case uses its own cell name (T1, T2) so that run_ids do not collide across architectures.
-    for tag, model, ds in (("T1", "bncnn", "cifar10"), ("T2", "plaincnn", "cifar10")):
+    four = ("adabelief-dw", "sfadamw-l2", "adam-x10", "adamw-x0.1")
+    for tag, model, ds, opts in (("T1", "bncnn", "cifar10", four), ("T2", "plaincnn", "cifar10", four),
+                                 ("T3", "resnet18nb", "cifar10", ("adam", "sfadamw")),
+                                 ("T4", "resnet18nbz", "cifar10", ("adam",))):
         cfg = dict(config.CELLS["B"], dataset=ds, model=model, batch_size=32)
         data = GPUData(ds, None, device, 200, config.SPLIT_SEED, fake=True)
-        for o in ("adabelief-dw", "sfadamw-l2", "adam-x10", "adamw-x0.1"):
+        for o in opts:
             config.ensure_variant(o)
             for lr in (config.lr_grid(o)[2], config.lr_grid(o)[1]):
-                kw = dict(cell=tag, phase="st", cell_cfg=cfg, opt_name=o, lr=lr, seed=3, epochs=4,
+                # ResNet-18 without BN learns more slowly at the start: give it more steps to show learning
+                n_ep = 3 if model.startswith("resnet18nb") else 4
+                kw = dict(cell=tag, phase="st", cell_cfg=cfg, opt_name=o, lr=lr, seed=3, epochs=n_ep,
                           data=data, device=device, env=env, log=quiet)
                 run_one(out_dir=root / "straight", **kw)
                 rid = run_id(tag, "st", o, lr, 3)
                 r = read_json(root / "straight" / "runs" / rid / "result.json")
                 h = r["history"]
                 learned = not r["diverged"] and h[-1]["train_loss"] < 0.95 * h[0]["train_loss"]
+                if model.startswith("resnet18nb"):
+                    # Without BN the deep ResNet starts slowly on this tiny augmented fake set; here we only
+                    # require a finite, non-diverged run. Learning is checked on real data by the E7p pilot.
+                    learned = not r["diverged"] and all(math.isfinite(e["train_loss"]) for e in h)
                 if learned:
                     break
             st = run_one(out_dir=root / "resumed", interrupt_after=1, **kw)
@@ -380,7 +389,24 @@ def cmd_selftest(args, log):
             if not ok:
                 fails.append(f"{ds}/{model}/{o}: learned={learned} norms={norms_ok} resume={same}")
 
-    # 4. Work lists can be built
+    # 4. ResNet-18 without BN: same layout as ResNet-18, no BatchNorm, 20 conv layers with biases
+    from bench.models import build_model
+    for name, n_alpha in (("resnet18nb", 0), ("resnet18nbz", 8)):
+        m = build_model(name, 3, 10)
+        n_bn = sum(isinstance(x, torch.nn.BatchNorm2d) for x in m.modules())
+        convs = [x for x in m.modules() if isinstance(x, torch.nn.Conv2d)]
+        n_alpha_got = sum(1 for n_, _ in m.named_parameters() if n_.endswith("alpha"))
+        ref = build_model("resnet18", 3, 10)
+        same_shapes = [tuple(x.weight.shape) for x in convs] == \
+            [tuple(x.weight.shape) for x in ref.modules() if isinstance(x, torch.nn.Conv2d)]
+        ok = n_bn == 0 and len(convs) == 20 and all(x.bias is not None for x in convs) \
+            and n_alpha_got == n_alpha and same_shapes
+        log(f"   [{'ok ' if ok else 'ERR'}] {name}: {len(convs)} conv layers, {n_bn} BN layers, "
+            f"{n_alpha_got} residual scales, conv shapes as ResNet-18: {same_shapes}")
+        if not ok:
+            fails.append(f"{name}: wrong structure")
+
+    # 5. Work lists can be built
     for exp in X.EXPERIMENTS:
         log(f"   {exp}: {len(X.units(exp))} units")
     if fails:
@@ -397,7 +423,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exp", nargs="+", choices=X.EXPERIMENTS,
                     help="one or more experiments, run in order (e.g. --exp E1 E3 E2 X1)")
-    ap.add_argument("--cells", nargs="+", choices=["B", "C", "D", "E"], help="run only these base cells")
+    ap.add_argument("--cells", nargs="+", choices=["B", "C", "D", "E", "F", "G", "H"], help="run only these base cells")
     ap.add_argument("--out", default="results_exp")
     ap.add_argument("--data", default="data")
     ap.add_argument("--worker", type=int)

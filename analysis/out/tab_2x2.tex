@@ -1,0 +1,28 @@
+\begin{table}[!t]
+\caption{Factorial design: update procedure $\times$ weight-decay form. Final test accuracy (\%), mean $\pm$ standard deviation over five seeds; every configuration has its own tuned LR. Cells as in Table~\ref{tab:cells}; dec.: decoupled decay.}
+\label{tab:2x2}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{2}{c}{Adam procedure} & \multicolumn{2}{c}{Procedure X} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Cell, X & L2 (Adam) & dec. (AdamW) & X + L2 & X + dec. \\
+\midrule
+B, SF-AdamW & $88.67\pm0.09$ & $90.22\pm0.19$ & $89.70\pm0.19$ & $90.90\pm0.13$ \\
+D, SF-AdamW & $65.23\pm0.22$ & $66.88\pm0.26$ & $66.85\pm0.11$ & $68.25\pm0.14$ \\
+E, SF-AdamW & $87.53\pm0.40$ & $87.49\pm0.21$ & $89.19\pm0.66$ & $89.72\pm0.20$ \\
+C, SF-AdamW & $93.56\pm0.13$ & $93.51\pm0.13$ & $93.58\pm0.22$ & $94.69\pm0.10$ \\
+F, SF-AdamW & $90.59\pm0.16$ & $90.51\pm0.11$ & $91.70\pm0.18$ & $90.48\pm0.13$ \\
+G, SF-AdamW & $73.15\pm0.60$ & $71.65\pm0.08$ & $73.44\pm0.33$ & $75.79\pm0.09$ \\
+\midrule
+B, AdaBelief & $88.67\pm0.09$ & $90.22\pm0.19$ & $90.14\pm0.10$ & $90.28\pm0.10$ \\
+D, AdaBelief & $65.23\pm0.22$ & $66.88\pm0.26$ & $66.89\pm0.35$ & $67.35\pm0.33$ \\
+E, AdaBelief & $87.53\pm0.40$ & $87.49\pm0.21$ & $87.69\pm0.55$ & $86.79\pm0.21$ \\
+C, AdaBelief & $93.56\pm0.13$ & $93.51\pm0.13$ & $94.70\pm0.06$ & $94.51\pm0.21$ \\
+F, AdaBelief & $90.59\pm0.16$ & $90.51\pm0.11$ & $92.82\pm0.21$ & $92.58\pm0.17$ \\
+G, AdaBelief & $73.15\pm0.60$ & $71.65\pm0.08$ & $75.97\pm0.07$ & $73.22\pm0.31$ \\
+\bottomrule
+\end{tabular}
+\end{table}

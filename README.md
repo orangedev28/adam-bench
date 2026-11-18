@@ -2,7 +2,9 @@
 
 Code and training logs for a benchmark of 17 Adam-family optimizers and SGD with momentum on convolutional networks, and for the follow-up study
 
-> **Update Rule or Weight Decay? Disentangling the Gains of Adam Variants on Batch-Normalized Convolutional Networks**
+> **Update Procedure, Weight-Decay Form, and Batch Normalization: A Factorial Attribution of Adam-Variant Gains in Convolutional Networks**
+
+(an earlier version of the follow-up study, on cells B–E only, was titled *Update Rule or Weight Decay? Disentangling the Gains of Adam Variants on Batch-Normalized Convolutional Networks*; its scripts are kept below).
 
 Everything needed to check the numbers of the paper is here: the training code, the result file of every run, and the analysis scripts. The analysis needs no GPU and no PyTorch.
 
@@ -12,12 +14,13 @@ Everything needed to check the numbers of the paper is here: the training code, 
 |---|---|
 | `bench/` | Library: configuration (`config.py`), data on GPU (`data.py`), models (`models.py`), optimizers (`optim.py`), one training run (`train.py`), statistics (`stats.py`), follow-up experiments (`experiments.py`) |
 | `run_cell.py` | Runner of the benchmark: LR sweep, LR selection, main runs, for one cell |
-| `run_exp.py` | Runner of the follow-up experiments (X1, E1, E2, E2b, E3, E4, E1c, E5, E5b, E6, E6c) |
+| `run_exp.py` | Runner of the follow-up experiments (X1, E1, E2, E2b, E3, E4, E1c, E5, E5b, E6, E6c, E7p, E7, E7h, E8, E9) |
 | `analyze.py` | Summaries of the benchmark (tables, rankings, plots) |
 | `analysis/` | Analysis scripts of the paper (factorial tables, ANOVA, paired tests, figure) |
 | `results/benchmark/` | Benchmark results: 893 runs, cells A–E |
-| `results/followup/` | Follow-up results: 291 runs, experiments E1, E2, E2b, E3, E4, E5, E5b, E1c, E6, E6c |
-| `colab.ipynb`, `colab_exp.ipynb`, `kaggle_exp.ipynb` | Launchers used on Google Colab and Kaggle (the two `*_exp` notebooks are the versions used for the last experiments, E1c–E6c; earlier versions are in the git history) |
+| `results/followup/` | Follow-up results: 456 runs, experiments E1, E2, E2b, E3, E4, E5, E5b, E1c, E6, E6c, E7, E8, E9 (raw logs of E7–E9 in `logs_v5/`) |
+| `colab.ipynb`, `colab_exp.ipynb`, `kaggle_exp.ipynb` | Launchers used on Google Colab and Kaggle for the benchmark and for E1c–E6c (earlier versions are in the git history) |
+| `colab_exp_v5.ipynb`, `kaggle_exp_v5.ipynb` | Launchers used for E7p, E7, E8 (Kaggle, cells F and E) and E8, E9 (Colab, cells B and G) |
 | `ref/` | Reference code used only by `--check-ref` |
 
 ## Benchmark
@@ -31,6 +34,15 @@ Five cells, each a dataset × model pair run entirely on one GPU type (Tesla T4)
 | C | CIFAR-10 | ResNet-18 | 30 / 100 | Kaggle |
 | D | CIFAR-100 | 5-layer CNN with BN | 50 / 50 | Kaggle |
 | E | CIFAR-10 | 5-layer CNN, BN replaced by conv biases | 50 / 50 | Kaggle |
+
+The follow-up study adds two cells (same protocol, Tesla T4):
+
+| Cell | Dataset | Model | Epochs (sweep / main) | Platform |
+|---|---|---|---|---|
+| F | CIFAR-10 | ResNet-18 without BN (BN removed, conv biases added; `resnet18nb`) | 30 / 100 | Kaggle |
+| G | CIFAR-100 | ResNet-18 | 30 / 100 | Colab |
+
+Cell H (`resnet18nbz`, ResNet-18 without BN plus a zero-initialized scalar on each residual branch) was defined as a fallback in case F did not train; the pilot E7p showed that F trains (best validation accuracy 88.5% after 30 epochs), so H was not used and its pilot runs are not part of this release.
 
 Optimizers: Adam, AdaMax, NAdam, AMSGrad, AdamW, RAdam, AdaBelief, AdamP, Adan, Lion, MARS, AdEMAMix, C-AdamW, Schedule-Free AdamW, SPAM, AdamS, VRAdam, and SGD with momentum as a reference. Adam, AdaMax, NAdam, AMSGrad, AdamW, RAdam and SGD come from `torch.optim`; the others are re-implemented in `bench/optim.py` from the papers and the authors' code (sources are listed at the top of that file).
 
@@ -56,12 +68,27 @@ Optimizer variants are named `base-suffix`: `-l2` (coupled L2), `-dw` (decoupled
 | E5, E5b | Seeds 3–4 for every remaining value of the weight-decay sweep, so that all values have 5 seeds | B, E | 28 |
 | E1c | Missing corners of the 2×2 design on ResNet-18: `adabelief-dw`, `sfadamw-l2` (LR search with 30-epoch runs + 5 seeds of 100 epochs) | C | 20 |
 | E6, E6c | Re-runs (seeds 0–1) with per-step recording of the measured update: Adam (×1, ×0.01), AdamW, SF-AdamW (L2 and decoupled) in B and E; Adam, AdamW, AdaBelief, SF-AdamW in C | B, C, E | 28 |
+| E7 | The six configurations of the 2×2 designs (Adam, AdamW, `sfadamw-l2`, `sfadamw`, `adabelief`, `adabelief-dw`) on ResNet-18 without BN (LR search with 30-epoch runs + 5 seeds of 100 epochs) | F | 56 |
+| E8 | Remaining points of the joint grid: 6 LRs (1e-4 … 3e-2) × 6 coefficients (×0.001 … ×100 of the default) for Adam and AdamW, 1 seed, 50 epochs. One point (E, AdamW ×100, LR 3e-2) was not run before the Kaggle time limit | B, E | 52 |
+| E9 | The six configurations of the 2×2 designs on ResNet-18 + CIFAR-100 (as E7) | G | 57 |
 
 `bench/experiments.py` also defines X1 (LR search with shortened cosine schedules); its results are not part of this release.
 
 ## Reproducing the numbers of the paper
 
 Run from the repository root; only Python 3 and matplotlib are needed.
+
+Current version (cells B–G):
+
+```bash
+python analysis/iccies.py            # 2×2 contrasts and ANOVA for cells B–G, ΔBN with Welch CIs, joint LR × decay grid and R_0.5 -> analysis/out/facts_iccies.json
+python analysis/iccies_tables.py     # Tables 2–4 (factorial results, effect sizes, ΔBN) -> analysis/out/tab_*.tex
+python analysis/iccies_fig_heat.py   # Fig. 1 (heatmap of the joint grid) -> analysis/out/fig_heat.pdf
+python analysis/facts.py             # Table 5 (decay sweep, selected LRs, imbalance I)
+python analysis/measured.py          # Table 6 (imbalance from the proxy and from measured updates)
+```
+
+Earlier version (cells B–E):
 
 ```bash
 python analysis/facts.py           # Table IV (sweep, selected LRs, imbalance I) -> analysis/out/facts.json

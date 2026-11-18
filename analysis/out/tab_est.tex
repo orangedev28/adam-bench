@@ -1,0 +1,26 @@
+\begin{table}[!t]
+\caption{Effect sizes in accuracy points from the per-seed contrasts of Eq.~(\ref{eq:contrasts}) (mean $\pm$ half-width of the 95\% confidence interval, five seeds), and the shares $\eta^2$ of the total sum of squares in the seed-blocked ANOVA of Eq.~(\ref{eq:anova}) for procedure (P), decay form (D) and interaction (I). $^{*}$: Holm-adjusted $p<0.05$ in the paired $t$-test on the contrast (36 tests); $^{\dagger}$: significant only in the ANOVA $F$-test.}
+\label{tab:est}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Cell, X & Procedure & Decay form & Interaction & $\eta^2$ (P\,/\,D\,/\,I) \\
+\midrule
+B, SF-AdamW & $+0.86\pm0.09^{*}$ & $+1.38\pm0.08^{*}$ & $-0.35\pm0.53$ & .27\,/\,.69\,/\,.01 \\
+D, SF-AdamW & $+1.49\pm0.25^{*}$ & $+1.53\pm0.21^{*}$ & $-0.25\pm0.40$ & .47\,/\,.50\,/\,$<$.01 \\
+E, SF-AdamW & $+1.95\pm0.50^{*}$ & $+0.25\pm0.60$ & $+0.57\pm1.03$ & .85\,/\,.01\,/\,.02 \\
+C, SF-AdamW & $+0.60\pm0.16^{*}$ & $+0.53\pm0.20^{*}$ & $+1.16\pm0.18^{*}$ & .34\,/\,.27\,/\,.32 \\
+F, SF-AdamW & $+0.54\pm0.15^{*}$ & $-0.65\pm0.22^{*}$ & $-1.15\pm0.41^{*}$ & .26\,/\,.38\,/\,.30 \\
+G, SF-AdamW & $+2.22\pm0.51^{*}$ & $+0.43\pm0.47$ & $+3.85\pm0.72^{*}$ & .53\,/\,.02\,/\,.40 \\
+\midrule
+B, AdaBelief & $+0.76\pm0.13^{*}$ & $+0.85\pm0.16^{*}$ & $-1.41\pm0.34^{*}$ & .31\,/\,.39\,/\,.27 \\
+D, AdaBelief & $+1.06\pm0.56^{\dagger}$ & $+1.05\pm0.31^{*}$ & $-1.20\pm0.35^{*}$ & .39\,/\,.39\,/\,.12 \\
+E, AdaBelief & $-0.27\pm0.32$ & $-0.47\pm0.38$ & $-0.86\pm0.80$ & .08\,/\,.24\,/\,.20 \\
+C, AdaBelief & $+1.07\pm0.15^{*}$ & $-0.12\pm0.18$ & $-0.14\pm0.23$ & .93\,/\,.01\,/\,$<$.01 \\
+F, AdaBelief & $+2.15\pm0.23^{*}$ & $-0.16\pm0.23$ & $-0.16\pm0.16$ & .97\,/\,.01\,/\,$<$.01 \\
+G, AdaBelief & $+2.20\pm0.38^{*}$ & $-2.13\pm0.42^{*}$ & $-1.25\pm0.77^{\dagger}$ & .48\,/\,.45\,/\,.04 \\
+\bottomrule
+\end{tabular}
+\end{table}
