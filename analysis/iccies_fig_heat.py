@@ -1,4 +1,4 @@
-"""Fig. 1 of Paper 2: validation accuracy over the joint LR x decay grid. Run: python analysis/iccies_fig_heat.py"""
+"""Fig. 2 of Paper 2: validation accuracy over the joint LR x decay grid. Run: python analysis/iccies_fig_heat.py"""
 import json, numpy as np, matplotlib
 matplotlib.use('Agg'); import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
