@@ -80,10 +80,12 @@ Run from the repository root; only Python 3 and matplotlib are needed.
 
 Current version (cells B–G):
 
+Fig. 1 of the paper (overview of the analysis framework) is a diagram drawn by hand and is not produced by these scripts.
+
 ```bash
 python analysis/iccies.py            # 2×2 contrasts and ANOVA for cells B–G, ΔBN with Welch CIs, joint LR × decay grid and R_0.5 -> analysis/out/facts_iccies.json
 python analysis/iccies_tables.py     # Tables 2–4 (factorial results, effect sizes, ΔBN) -> analysis/out/tab_*.tex
-python analysis/iccies_fig_heat.py   # Fig. 1 (heatmap of the joint grid) -> analysis/out/fig_heat.pdf
+python analysis/iccies_fig_heat.py   # Fig. 2 (heatmap of the joint grid) -> analysis/out/fig_heat.pdf
 python analysis/facts.py             # Table 5 (decay sweep, selected LRs, imbalance I)
 python analysis/measured.py          # Table 6 (imbalance from the proxy and from measured updates)
 ```
